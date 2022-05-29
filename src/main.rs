@@ -17,7 +17,6 @@ struct Args {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
-    // TODO merge default config with config file with env with args
     let args = Args::parse();
     let n_bursts = 4;
     let n_requests_per_burst = 16;
@@ -26,17 +25,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (tx_stats, rx_stats) = mpsc::channel(stats_buffer);
     let stats_handle = tokio::spawn(async move { stats_actor(rx_stats).await });
 
-    // TODO Terminal User Interface updates?
-
     if let Some(template) = args.zxy {
         for b in 0..n_bursts {
             let mut join_handles = Vec::new();
-            for rpb in 0..n_requests_per_burst {
+            for rpb in 1..=n_requests_per_burst {
                 let tmpl = template.clone();
-                let seed = b * rpb;
+                let seed = (b * n_requests_per_burst) + rpb;
                 let tx = tx_stats.clone();
-                // TODO
-                // let session = MapBrowsingSession::new(XYZ Template, Strategy, Config, StartingCoord)
+                // // TODO config should tell us how to construct these...
+                // let session = Session::FlightSim::new(XYZ Template, StartCoord, EndCoord)
+                // let session = Session::Metatile::new(XYZ Template, StartingTile, EndZoom)
                 // pass a `MapBrowsingSession` + seed to request_handler
                 join_handles.push(tokio::spawn(async move {
                     request_handler(tmpl, seed, tx).await

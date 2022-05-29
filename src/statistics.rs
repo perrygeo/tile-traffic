@@ -40,19 +40,24 @@ pub async fn stats_actor(rx: mpsc::Receiver<RequestStat>) {
     let mut rx = rx;
     let mut count = 0;
     let mut cumulative_duration = 0.0;
-    // TODO count by status code
-    // TODO count by content type
-    // TODO size vs response time
-    // TODO histogram of response time
-    // TODO histogram of size
+    let mut cumulative_length = 0;
+    // TODO
+    // count by status code
+    // count by content type
+    // size vs response time
+    // histogram of response time
+    // histogram of size
     // response time vs lat
     // response time vs z
     while let Some(s) = rx.recv().await {
         count += 1;
         cumulative_duration += s.duration.as_secs_f64();
+        cumulative_length += s.content_length;
         debug!("{:?}", s);
     }
-    let mean = cumulative_duration / count as f64;
-    info!("Count: {}", count);
-    info!("Mean Duration: {}", mean);
+    let mean_duration = cumulative_duration / count as f64;
+    let mean_length = cumulative_length / count;
+    info!("Count: {} tiles", count);
+    info!("Mean Duration: {} ms", mean_duration);
+    info!("Mean Content Length: {} bytes", mean_length);
 }
