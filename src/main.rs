@@ -56,14 +56,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if let Some(template) = args.zxy {
         let n_bursts = 4;
-        let n_requests_per_burst = 4;
+        let n_requests_per_burst = 16;
         for b in 0..n_bursts {
             let futures = FuturesUnordered::new();
             for rpb in 0..n_requests_per_burst {
                 let url = make_url(template.clone(), b * rpb);
 
                 futures.push(async move {
-                    info!("iniating request");
+                    info!("initaiting request");
                     let start = Instant::now();
                     let res = reqwest::get(url).await;
                     let duration = start.elapsed();
@@ -81,7 +81,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 });
             }
 
-            futures.for_each_concurrent(3, |_| async move {}).await;
+            futures
+                .for_each_concurrent(n_requests_per_burst, |_| async move {})
+                .await;
         }
     }
 
