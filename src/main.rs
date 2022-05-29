@@ -1,8 +1,8 @@
 use clap::Parser;
-use futures::stream::FuturesUnordered;
-use futures::StreamExt;
-use log::{error, info};
-use std::time::Instant;
+use tokio::sync::mpsc;
+
+use webmap_loadgen::request_handler::request_handler;
+use webmap_loadgen::statistics::stats_actor;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -13,90 +13,48 @@ struct Args {
     wms: Option<String>,
 }
 
-// configuration.rs
-// coordinates.rs list of pts to zxys or lonlat extents
-// lib.rs
-// services/wms.rs
-// services/zxy.rs
-// statistics/analysis.rs reads from sqlite
-// statistics/collector.rs writes to sqlite
-// strategies/orbit.rs
-// strategies/search_and_pan.rs
-// tui.rs
-// map_browsing_session.rs
-// workers.rs
-
-// map_browsing_session.rs combines service + strategy + config + coords
-// e.g. localhost tileserver + orbit + all 60 utm zones + starting at dallas
-
-pub async fn worker() {
-    // TODO
-    todo!();
-}
-
-pub fn make_url(template: String, c: usize) -> String {
-    let mut url = template;
-    // http://localhost:7800/osm.points/z/x/y.pbf
-    // Move diagonally
-    let z = 7;
-    let x = 102 + c;
-    let y = 53 + c;
-
-    url = url.replace("{z}", z.to_string().as_ref());
-    url = url.replace("{x}", x.to_string().as_ref());
-    url = url.replace("{y}", y.to_string().as_ref());
-    url
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
+    // TODO merge default config with config file with env with args
     let args = Args::parse();
+    let n_bursts = 4;
+    let n_requests_per_burst = 16;
+    let stats_buffer = 32;
+
+    let (tx_stats, rx_stats) = mpsc::channel(stats_buffer);
+    let stats_handle = tokio::spawn(async move { stats_actor(rx_stats).await });
+
+    // TODO Terminal User Interface updates?
 
     if let Some(template) = args.zxy {
-        let n_bursts = 4;
-        let n_requests_per_burst = 16;
         for b in 0..n_bursts {
-            let futures = FuturesUnordered::new();
+            let mut join_handles = Vec::new();
             for rpb in 0..n_requests_per_burst {
-                let url = make_url(template.clone(), b * rpb);
-
-                futures.push(async move {
-                    info!("initaiting request");
-                    let start = Instant::now();
-                    let res = reqwest::get(url).await;
-                    let duration = start.elapsed();
-                    if let Ok(response) = res {
-                        let status = response.status();
-                        let path = response.url().to_string();
-                        let content_length = if let Some(length) = response.content_length() {
-                            // we get the content length from the header
-                            length
-                        } else {
-                            // last resort, read the body
-                            response.bytes().await.unwrap().len() as u64
-                        };
-
-                        info!(
-                            "{} {:?}, {:?}, {:?}",
-                            path, status, content_length, duration
-                        );
-                    } else {
-                        error!("{:?}", res);
-                    };
-                });
+                let tmpl = template.clone();
+                let seed = b * rpb;
+                let tx = tx_stats.clone();
+                // TODO
+                // let session = MapBrowsingSession::new(XYZ Template, Strategy, Config, StartingCoord)
+                // pass a `MapBrowsingSession` + seed to request_handler
+                join_handles.push(tokio::spawn(async move {
+                    request_handler(tmpl, seed, tx).await
+                }));
             }
-
-            futures
-                .for_each_concurrent(n_requests_per_burst, |_| async move {})
-                .await;
+            for jh in join_handles {
+                jh.await?;
+            }
         }
     }
 
     if args.wms.is_some() {
         unimplemented!();
     }
+
+    // Must clean up stats actor to ensure completion
+    drop(tx_stats);
+    stats_handle.await?;
 
     Ok(())
 }
