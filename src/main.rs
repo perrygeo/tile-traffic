@@ -36,11 +36,11 @@ pub async fn worker() {
 
 pub fn make_url(template: String, c: usize) -> String {
     let mut url = template;
-    // http://localhost:7800/osm.points/8/131/93.pbf
+    // http://localhost:7800/osm.points/z/x/y.pbf
     // Move diagonally
     let z = 7;
-    let x = 102;
-    let y = 53;
+    let x = 102 + c;
+    let y = 53 + c;
 
     url = url.replace("{z}", z.to_string().as_ref());
     url = url.replace("{x}", x.to_string().as_ref());
@@ -70,7 +70,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if let Ok(response) = res {
                         let status = response.status();
                         let path = response.url().to_string();
-                        let content_length = response.content_length().unwrap_or(0);
+                        let content_length = if let Some(length) = response.content_length() {
+                            // we get the content length from the header
+                            length
+                        } else {
+                            // last resort, read the body
+                            response.bytes().await.unwrap().len() as u64
+                        };
+
                         info!(
                             "{} {:?}, {:?}, {:?}",
                             path, status, content_length, duration
