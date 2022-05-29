@@ -34,6 +34,20 @@ pub async fn worker() {
     todo!();
 }
 
+pub fn make_url(template: String, c: usize) -> String {
+    let mut url = template;
+    // http://localhost:7800/osm.points/8/131/93.pbf
+    // Move diagonally
+    let z = 7;
+    let x = 102;
+    let y = 53;
+
+    url = url.replace("{z}", z.to_string().as_ref());
+    url = url.replace("{x}", x.to_string().as_ref());
+    url = url.replace("{y}", y.to_string().as_ref());
+    url
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
@@ -41,35 +55,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     if let Some(template) = args.zxy {
-        let futures = FuturesUnordered::new();
-        for c in 0..24 {
-            let mut url = template.clone();
-            url = url.replace("{z}", ((c % 4) + 4).to_string().as_ref());
-            url = url.replace("{x}", ((c * 4) + 4).to_string().as_ref());
-            url = url.replace("{y}", ((c * 4) + 4).to_string().as_ref());
-            futures.push(tokio::spawn(async move {
-                let start = Instant::now();
-                let res = reqwest::get(url).await;
-                let duration = start.elapsed();
-                info!("{:?}", duration);
-                res
-            }));
-        }
+        let n_bursts = 4;
+        let n_requests_per_burst = 4;
+        for b in 0..n_bursts {
+            let futures = FuturesUnordered::new();
+            for rpb in 0..n_requests_per_burst {
+                let url = make_url(template.clone(), b * rpb);
 
-        futures
-            .for_each_concurrent(4, |r| async move {
-                if let Ok(Ok(response)) = r {
-                    let status = response.status();
-                    let path = response.url().path();
-                    let content_length = response.content_length().unwrap_or(0);
-                    // let headers = response.headers();
-                    // let content_length_header = headers.get("Content-Length");
-                    info!("{} {:?}, {:?}", path, status, content_length);
-                } else {
-                    error!("{:?}", r);
-                }
-            })
-            .await;
+                futures.push(async move {
+                    info!("iniating request");
+                    let start = Instant::now();
+                    let res = reqwest::get(url).await;
+                    let duration = start.elapsed();
+                    if let Ok(response) = res {
+                        let status = response.status();
+                        let path = response.url().to_string();
+                        let content_length = response.content_length().unwrap_or(0);
+                        info!(
+                            "{} {:?}, {:?}, {:?}",
+                            path, status, content_length, duration
+                        );
+                    } else {
+                        error!("{:?}", res);
+                    };
+                });
+            }
+
+            futures.for_each_concurrent(3, |_| async move {}).await;
+        }
     }
 
     if args.wms.is_some() {
