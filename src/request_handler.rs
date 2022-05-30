@@ -1,13 +1,14 @@
 use log::{debug, error};
 use std::time::Instant;
+
 use tokio::sync::mpsc;
 
 use crate::statistics::RequestStat;
-use crate::strategies::make_url;
+use crate::strategies::Strategy;
 
 /// Wraps the reqwest, gathers and emits stats
-pub async fn request_handler(template: String, seed: usize, tx_stats: mpsc::Sender<RequestStat>) {
-    let url = make_url(template, seed);
+pub async fn request_handler(strategy: Strategy, seed: usize, tx_stats: mpsc::Sender<RequestStat>) {
+    let url = strategy.make_url(seed);
     debug!("initiating request for {}", url);
     let start = Instant::now();
     let res = reqwest::get(url).await;
