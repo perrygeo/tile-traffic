@@ -3,12 +3,11 @@ use std::time::Instant;
 
 use tokio::sync::mpsc;
 
-use crate::statistics::RequestMetric;
-use crate::strategies::Strategy;
+use crate::{statistics::RequestMetric, strategies::WebMapSession};
 
 /// Wraps the reqwest, gathers and emits stats
 pub async fn request_handler(
-    strategy: Strategy,
+    strategy: impl WebMapSession,
     seed: usize,
     tx_stats: mpsc::Sender<RequestMetric>,
 ) {

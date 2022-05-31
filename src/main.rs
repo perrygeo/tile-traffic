@@ -3,7 +3,7 @@ use tokio::sync::mpsc;
 
 use webmap_loadgen::request_handler::request_handler;
 use webmap_loadgen::statistics::stats_actor;
-use webmap_loadgen::strategies::Strategy;
+use webmap_loadgen::strategies::Metatile;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -24,7 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let stats_handle = tokio::spawn(async move { stats_actor(rx_stats).await });
 
     // Specify the strategy for this session
-    let strategy = Strategy::Metatile(args.template);
+    let strategy = Metatile::new(args.template);
 
     for b in 0..n_bursts {
         let mut join_handles = Vec::new();

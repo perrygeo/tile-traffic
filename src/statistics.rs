@@ -44,7 +44,6 @@ fn mean(xs: &[f64]) -> f64 {
 }
 
 /// An "actor" to handle the stats messages
-///
 pub async fn stats_actor(rx: mpsc::Receiver<RequestMetric>) {
     let mut rx = rx;
     let mut count = 0;
@@ -57,9 +56,11 @@ pub async fn stats_actor(rx: mpsc::Receiver<RequestMetric>) {
         response_times.push((s.duration.as_secs_f64() * 1000.).round());
         response_sizes.push((s.content_length as f64 / 1000.).round());
 
-        // TODO this blocks the main thread but makes the borrow checker happy
+        // this blocks the main thread but makes the borrow checker happy
         // try with spawn_blocking and you have to clone the Vec hmmm....
-        // idea: split out draw -> string then give ownership of the output string to tui
+        // TODO rather than passing references
+        // maybe state.render_text() -> string
+        // then give ownership of the output string to tui?
         if count % 3 == 0 {
             tui::draw(tui::TuiState {
                 response_times: &response_times,
