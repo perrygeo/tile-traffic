@@ -64,6 +64,9 @@ pub async fn stats_actor(rx: mpsc::Receiver<RequestMetric>) {
             tui::draw(tui::TuiState {
                 response_times: &response_times,
                 response_sizes: &response_sizes,
+                // TODO
+                // count by status code
+                // count by content type
             });
         }
     }
@@ -72,9 +75,6 @@ pub async fn stats_actor(rx: mpsc::Receiver<RequestMetric>) {
     tui::draw(tui::TuiState {
         response_times: &response_times,
         response_sizes: &response_sizes,
-        // TODO
-        // count by status code
-        // count by content type
     });
     let mean_size: f64 = mean(&response_sizes);
     let mean_time: f64 = mean(&response_times);

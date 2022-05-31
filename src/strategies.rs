@@ -1,58 +1,9 @@
+use crate::coordinates::Tile;
+
 #[derive(Clone)]
 pub enum Strategy {
     Metatile(String),
     FlightSim(String),
-}
-
-#[derive(Clone, Debug)]
-struct Tile {
-    x: u32,
-    y: u32,
-    zoom: u32,
-}
-
-impl Tile {
-    fn children(&self, target_zoom: u32) -> Vec<Tile> {
-        let metatile = Tile {
-            x: self.x,
-            y: self.y,
-            zoom: self.zoom,
-        };
-        let mut tiles = vec![metatile];
-        for z in self.zoom..=target_zoom {
-            let prev_zoom = z - 1;
-
-            // this is a hack algorithm!
-            // TODO eliminate clone and
-            // only iterate over tiles of the previous zoom
-            for t in tiles.clone().iter() {
-                if t.zoom == prev_zoom {
-                    tiles.push(Tile {
-                        x: t.x * 2,
-                        y: t.y * 2,
-                        zoom: z,
-                    });
-                    tiles.push(Tile {
-                        x: t.x * 2 + 1,
-                        y: t.y * 2,
-                        zoom: z,
-                    });
-                    tiles.push(Tile {
-                        x: t.x * 2 + 1,
-                        y: t.y * 2 + 1,
-                        zoom: z,
-                    });
-                    tiles.push(Tile {
-                        x: t.x * 2,
-                        y: t.y * 2 + 1,
-                        zoom: z,
-                    });
-                }
-            }
-        }
-
-        tiles
-    }
 }
 
 impl Strategy {

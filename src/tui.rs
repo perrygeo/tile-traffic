@@ -13,22 +13,20 @@ pub fn draw(state: TuiState) {
 
     let h = Histogram::from_slice(times, HistogramBins::Count(80));
     let v = ContinuousView::new().add(h);
-    let response_time_hist = Page::single(&v).dimensions(80, 9).to_text().unwrap();
+    let response_time_hist = Page::single(&v).dimensions(80, 7).to_text().unwrap();
 
     let h = Histogram::from_slice(sizes, HistogramBins::Count(80));
     let v = ContinuousView::new().add(h);
-    let response_size_hist = Page::single(&v).dimensions(80, 9).to_text().unwrap();
+    let response_size_hist = Page::single(&v).dimensions(80, 7).to_text().unwrap();
 
     // clear screen and redraw
     print!("{esc}c", esc = 27 as char);
     println!(
         "Running tile-traffic...
 Completed {} requests
-
-Response times (ms)
+                                   Response times (ms)
 {}
-
-Response sizes (kB)
+                                   Response sizes (kB)
 {}
         ",
         times.len(),

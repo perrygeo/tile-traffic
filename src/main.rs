@@ -15,7 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
     let args = Args::parse();
-    let n_bursts = 4;
+    let n_bursts = 8;
     let n_requests_per_burst = 32;
     let buffer = 32;
 
