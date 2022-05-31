@@ -16,16 +16,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let args = Args::parse();
     let n_bursts = 4;
-    let n_requests_per_burst = 16;
-    let stats_buffer = 32;
+    let n_requests_per_burst = 32;
+    let buffer = 32;
 
-    let (tx_stats, rx_stats) = mpsc::channel(stats_buffer);
+    // Spawn actor to handle the stats and terminal drawing
+    let (tx_stats, rx_stats) = mpsc::channel(buffer);
     let stats_handle = tokio::spawn(async move { stats_actor(rx_stats).await });
 
-    // // TODO config should tell us how to construct these...
-    // let session = Session::FlightSim::new(XYZ Template, StartCoord, EndCoord)
-    // let session = Session::Metatile::new(XYZ Template, StartingTile, EndZoom)
-    // pass a `MapBrowsingSession` + seed to request_handler
+    // Specify the strategy for this session
     let strategy = Strategy::Metatile(args.template);
 
     for b in 0..n_bursts {
@@ -45,7 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Note: Must clean up channel to ensure completion of stats actor
+    // Note: Must clean up channels and ensure completion of tasks
     drop(tx_stats);
     stats_handle.await?;
 

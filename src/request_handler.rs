@@ -3,11 +3,15 @@ use std::time::Instant;
 
 use tokio::sync::mpsc;
 
-use crate::statistics::RequestStat;
+use crate::statistics::RequestMetric;
 use crate::strategies::Strategy;
 
 /// Wraps the reqwest, gathers and emits stats
-pub async fn request_handler(strategy: Strategy, seed: usize, tx_stats: mpsc::Sender<RequestStat>) {
+pub async fn request_handler(
+    strategy: Strategy,
+    seed: usize,
+    tx_stats: mpsc::Sender<RequestMetric>,
+) {
     let url = strategy.make_url(seed);
     debug!("initiating request for {}", url);
     let start = Instant::now();
@@ -27,7 +31,7 @@ pub async fn request_handler(strategy: Strategy, seed: usize, tx_stats: mpsc::Se
         let content_type = headers.get("Content-Type");
 
         // Send stats
-        let stat = RequestStat::new(path, status, content_length, duration, content_type);
+        let stat = RequestMetric::new(path, status, content_length, duration, content_type);
         tx_stats.send(stat).await.unwrap();
     } else {
         error!("{:?}", res);
