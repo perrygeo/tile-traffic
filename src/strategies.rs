@@ -3,7 +3,7 @@
 use crate::coordinates::Tile;
 
 pub trait WebMapSession {
-    fn make_url(&self, seed: usize) -> String;
+    fn make_url(&self, seed: usize) -> (String, Tile);
 }
 
 #[derive(Clone, Debug)]
@@ -24,7 +24,7 @@ impl Metatile {
 }
 
 impl WebMapSession for Metatile {
-    fn make_url(&self, seed: usize) -> String {
+    fn make_url(&self, seed: usize) -> (String, Tile) {
         // TODO we can cache this
         let children = self.metatile.children(self.to_zoom);
 
@@ -35,6 +35,7 @@ impl WebMapSession for Metatile {
         url = url.replace("{x}", tile.x.to_string().as_ref());
         url = url.replace("{y}", tile.y.to_string().as_ref());
         url = url.replace("{z}", tile.zoom.to_string().as_ref());
-        url
+
+        (url, tile.clone())
     }
 }

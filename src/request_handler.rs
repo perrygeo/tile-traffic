@@ -11,7 +11,7 @@ pub async fn request_handler(
     seed: usize,
     tx_stats: mpsc::Sender<RequestMetric>,
 ) {
-    let url = strategy.make_url(seed);
+    let (url, tile) = strategy.make_url(seed);
     let start = Instant::now();
     let res = reqwest::get(url).await;
     debug!("{:?}", res);
@@ -30,7 +30,14 @@ pub async fn request_handler(
         let content_type = headers.get("Content-Type");
 
         // Send stats
-        let stat = RequestMetric::new(path, status, content_length, duration, content_type);
+        let stat = RequestMetric::new(
+            path,
+            status,
+            content_length,
+            duration,
+            content_type,
+            tile.zoom,
+        );
         tx_stats.send(stat).await.unwrap();
     } else {
         // TODO send failed metric

@@ -4,7 +4,7 @@ use log::info;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 
-use crate::tui;
+use crate::tui::TuiState;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -14,6 +14,7 @@ pub struct RequestMetric {
     content_length: u64,
     duration: std::time::Duration,
     content_type: String,
+    zoom: u32,
 }
 
 impl RequestMetric {
@@ -23,6 +24,7 @@ impl RequestMetric {
         content_length: u64,
         duration: std::time::Duration,
         content_type: Option<&reqwest::header::HeaderValue>,
+        zoom: u32,
     ) -> Self {
         let content_type = if let Some(cty) = content_type {
             cty.to_str().unwrap().to_string()
@@ -36,6 +38,7 @@ impl RequestMetric {
             content_length,
             duration,
             content_type,
+            zoom,
         }
     }
 }
@@ -56,45 +59,30 @@ fn incr_count(mut hm: HashMap<String, usize>, k: String) -> HashMap<String, usiz
 pub async fn stats_actor(rx: mpsc::Receiver<RequestMetric>) {
     let mut rx = rx;
     let mut count = 0;
-    let mut response_times = Vec::new();
-    let mut response_sizes = Vec::new();
-    let mut status_codes = HashMap::new();
-    let mut content_types = HashMap::new();
-    // TODO let mut zoom_levels = HashMap::new();
+
+    let mut state = TuiState::default();
 
     while let Some(s) = rx.recv().await {
         count += 1;
+        state
+            .response_times
+            .push((s.duration.as_secs_f64() * 1000.).round());
+        state
+            .response_sizes
+            .push((s.content_length as f64 / 1000.).round());
+        state.status_codes = incr_count(state.status_codes, s.status.to_string());
+        state.content_types = incr_count(state.content_types, s.content_type.to_string());
+        state.zoom_levels = incr_count(state.zoom_levels, s.zoom.to_string());
 
-        response_times.push((s.duration.as_secs_f64() * 1000.).round());
-        response_sizes.push((s.content_length as f64 / 1000.).round());
-        status_codes = incr_count(status_codes, s.status.to_string());
-        content_types = incr_count(content_types, s.content_type.to_string());
-
-        // this blocks the main thread but makes the borrow checker happy
-        // try with spawn_blocking and you have to clone the Vec hmmm....
-        // TODO rather than passing references
-        // maybe state.render_text() -> string
-        // then give ownership of the output string to tui?
-        if count % 3 == 0 {
-            tui::draw(tui::TuiState {
-                response_times: &response_times,
-                response_sizes: &response_sizes,
-                status_codes: &status_codes,
-                content_types: &content_types,
-            });
-        }
+        // this blocks the tokio thread, TODO spawn blocking?
+        state.draw();
     }
 
     // Finalize
-    tui::draw(tui::TuiState {
-        response_times: &response_times,
-        response_sizes: &response_sizes,
-        status_codes: &status_codes,
-        content_types: &content_types,
-    });
-    let mean_size: f64 = mean(&response_sizes);
-    let mean_time: f64 = mean(&response_times);
+    state.draw();
     info!("Count: {} tiles", count);
+    let mean_time: f64 = mean(&state.response_times);
     info!("Mean Duration: {:0.2} ms", mean_time);
+    let mean_size: f64 = mean(&state.response_sizes);
     info!("Mean Content Length: {:0.2} kB", mean_size);
 }
