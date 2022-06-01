@@ -1,9 +1,13 @@
 use clap::Parser;
+use futures::prelude::*;
+use futures::stream::FuturesUnordered;
 use tokio::sync::mpsc;
+use tokio::time::{sleep, Duration};
 
-use webmap_loadgen::request_handler::request_handler;
-use webmap_loadgen::statistics::stats_actor;
-use webmap_loadgen::strategies::Metatile;
+use tile_traffic::coordinates::Tile;
+use tile_traffic::request_handler::request_handler;
+use tile_traffic::statistics::stats_actor;
+use tile_traffic::strategies::Metatile;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -15,35 +19,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
     let args = Args::parse();
-    let n_bursts = 8;
-    let n_requests_per_burst = 32;
+    let n_bursts = 12;
+    let n_requests_per_burst = 16;
     let buffer = 32;
 
     // Spawn actor to handle the stats and terminal drawing
     let (tx_stats, rx_stats) = mpsc::channel(buffer);
+    // TODO create the tuistate and move it
     let stats_handle = tokio::spawn(async move { stats_actor(rx_stats).await });
 
     // Specify the strategy for this session
-    let strategy = Metatile::new(args.template);
+    let starting_tile = Tile::from_coords(-104.99, 39.72, 6);
+    let strategy = Metatile::new(args.template, starting_tile, 10);
 
     for b in 0..n_bursts {
-        let mut join_handles = Vec::new();
-        for rpb in 1..=n_requests_per_burst {
-            // Spawn a request
-            let strat = strategy.clone();
-            let seed = (b * n_requests_per_burst) + rpb;
-            let tx = tx_stats.clone();
-            join_handles.push(tokio::spawn(async move {
-                request_handler(strat, seed, tx).await
-            }));
-        }
-        // Await all requests to ensure completion
-        for jh in join_handles {
-            jh.await?;
-        }
+        // Collect all the futures for this "burst"
+        let mut tasks = (0..n_requests_per_burst)
+            .into_iter()
+            .map(|r| {
+                let strat = strategy.clone();
+                let seed = (b * n_requests_per_burst) + r;
+                let tx = tx_stats.clone();
+                request_handler(strat, seed, tx)
+            })
+            .collect::<FuturesUnordered<_>>();
+
+        // Wait for all tile requests to complete
+        while tasks.next().await.is_some() {}
+
+        // Sleep for bit; when the user pauses to "view" the map
+        sleep(Duration::from_millis(100)).await;
     }
 
-    // Note: Must clean up channels and ensure completion of tasks
+    // clean up channels to ensure completion of tasks
     drop(tx_stats);
     stats_handle.await?;
 

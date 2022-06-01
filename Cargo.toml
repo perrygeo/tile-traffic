@@ -1,5 +1,5 @@
 [package]
-name = "webmap-loadgen"
+name = "tile_traffic"
 version = "0.1.0"
 edition = "2021"
 

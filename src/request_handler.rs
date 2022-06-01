@@ -1,9 +1,9 @@
+//! Handle the HTTP requests and emit metrics
+//!
+use crate::{statistics::RequestMetric, strategies::WebMapSession};
 use log::{debug, error};
 use std::time::Instant;
-
 use tokio::sync::mpsc;
-
-use crate::{statistics::RequestMetric, strategies::WebMapSession};
 
 /// Wraps the reqwest, gathers and emits stats
 pub async fn request_handler(
@@ -12,9 +12,9 @@ pub async fn request_handler(
     tx_stats: mpsc::Sender<RequestMetric>,
 ) {
     let url = strategy.make_url(seed);
-    debug!("initiating request for {}", url);
     let start = Instant::now();
     let res = reqwest::get(url).await;
+    debug!("{:?}", res);
     let duration = start.elapsed();
 
     if let Ok(response) = res {
@@ -33,6 +33,9 @@ pub async fn request_handler(
         let stat = RequestMetric::new(path, status, content_length, duration, content_type);
         tx_stats.send(stat).await.unwrap();
     } else {
+        // TODO send failed metric
+        // let stat = RequestMetric::new(path, status, None, duration, None);
+        // tx_stats.send(stat).await.unwrap();
         error!("{:?}", res);
     };
 }

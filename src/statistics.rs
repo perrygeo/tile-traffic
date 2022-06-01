@@ -1,4 +1,7 @@
+//! Gather stats from HTTP requests, summarize, and update the UI state
+//!
 use log::info;
+use std::collections::HashMap;
 use tokio::sync::mpsc;
 
 use crate::tui;
@@ -43,18 +46,29 @@ fn mean(xs: &[f64]) -> f64 {
     sum / count
 }
 
-/// An "actor" to handle the stats messages
+fn incr_count(mut hm: HashMap<String, usize>, k: String) -> HashMap<String, usize> {
+    let val = if let Some(v) = hm.get(&k) { v + 1 } else { 1 };
+    hm.insert(k, val);
+    hm
+}
+
+/// handles the incoming request metrics and calculates stats.
 pub async fn stats_actor(rx: mpsc::Receiver<RequestMetric>) {
     let mut rx = rx;
     let mut count = 0;
     let mut response_times = Vec::new();
     let mut response_sizes = Vec::new();
+    let mut status_codes = HashMap::new();
+    let mut content_types = HashMap::new();
+    // TODO let mut zoom_levels = HashMap::new();
+
     while let Some(s) = rx.recv().await {
         count += 1;
 
-        // histogram of response time
         response_times.push((s.duration.as_secs_f64() * 1000.).round());
         response_sizes.push((s.content_length as f64 / 1000.).round());
+        status_codes = incr_count(status_codes, s.status.to_string());
+        content_types = incr_count(content_types, s.content_type.to_string());
 
         // this blocks the main thread but makes the borrow checker happy
         // try with spawn_blocking and you have to clone the Vec hmmm....
@@ -65,9 +79,8 @@ pub async fn stats_actor(rx: mpsc::Receiver<RequestMetric>) {
             tui::draw(tui::TuiState {
                 response_times: &response_times,
                 response_sizes: &response_sizes,
-                // TODO
-                // count by status code
-                // count by content type
+                status_codes: &status_codes,
+                content_types: &content_types,
             });
         }
     }
@@ -76,6 +89,8 @@ pub async fn stats_actor(rx: mpsc::Receiver<RequestMetric>) {
     tui::draw(tui::TuiState {
         response_times: &response_times,
         response_sizes: &response_sizes,
+        status_codes: &status_codes,
+        content_types: &content_types,
     });
     let mean_size: f64 = mean(&response_sizes);
     let mean_time: f64 = mean(&response_times);

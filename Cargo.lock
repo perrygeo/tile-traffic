@@ -996,6 +996,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1141d4d61095b28419e22cb0bbf02755f5e54e0526f97f1e3d1d160e60885fb"
 
 [[package]]
+name = "tile_traffic"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "env_logger",
+ "futures",
+ "log",
+ "plotlib",
+ "reqwest",
+ "tokio",
+]
+
+[[package]]
 name = "tinyvec"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1265,19 +1278,6 @@ checksum = "7b17e741662c70c8bd24ac5c5b18de314a2c26c32bf8346ee1e6f53de919c283"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "webmap-loadgen"
-version = "0.1.0"
-dependencies = [
- "clap",
- "env_logger",
- "futures",
- "log",
- "plotlib",
- "reqwest",
- "tokio",
 ]
 
 [[package]]
