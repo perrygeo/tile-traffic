@@ -56,12 +56,10 @@ fn incr_count(mut hm: HashMap<String, usize>, k: String) -> HashMap<String, usiz
 }
 
 /// handles the incoming request metrics and calculates stats.
-pub async fn stats_actor(rx: mpsc::Receiver<RequestMetric>) {
-    let mut rx = rx;
+pub async fn stats_actor(mut rx: mpsc::Receiver<RequestMetric>, mut state: TuiState) {
     let mut count = 0;
 
-    let mut state = TuiState::default();
-
+    // Loop: Receive messages on a channel and update the state
     while let Some(s) = rx.recv().await {
         count += 1;
         state
@@ -74,15 +72,17 @@ pub async fn stats_actor(rx: mpsc::Receiver<RequestMetric>) {
         state.content_types = incr_count(state.content_types, s.content_type.to_string());
         state.zoom_levels = incr_count(state.zoom_levels, s.zoom.to_string());
 
-        // this blocks the tokio thread, TODO spawn blocking?
+        // this blocks the tokio thread
+        // TODO spawn_blocking? So far it's fast enough to not matter.
         state.draw();
     }
 
-    // Finalize
+    // No more incoming requests, someone dropped the tx end
+    // Finalize outputs
     state.draw();
     info!("Count: {} tiles", count);
     let mean_time: f64 = mean(&state.response_times);
-    info!("Mean Duration: {:0.2} ms", mean_time);
+    info!("Mean response time: {:0.2} ms", mean_time);
     let mean_size: f64 = mean(&state.response_sizes);
-    info!("Mean Content Length: {:0.2} kB", mean_size);
+    info!("Mean content length: {:0.2} kB", mean_size);
 }

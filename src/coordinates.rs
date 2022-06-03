@@ -5,7 +5,7 @@
 //! ```
 //! use webmap_loadgen::coordinates::Tile;
 //!
-//! // Denver, Colorado, USA
+//! // ~Denver, Colorado, USA
 //! // see https://a.tile.openstreetmap.org/7/26/48.png
 //! let t = Tile::from_coords(-105., 40., 7);
 //! assert_eq!(t.zoom, 7);
@@ -22,9 +22,12 @@
 //! ```
 //!
 
-use std::f64::consts::E;
+use std::f64::consts::{E, PI};
 
-/// A Web Mercator tile
+const EARTH_RADIUS: f64 = 6378137.0;
+const EARTH_CIRCUMFERENCE: f64 = 2. * PI * EARTH_RADIUS;
+
+/// A Web Mercator ZXY tile
 #[derive(Clone, Debug)]
 pub struct Tile {
     pub x: u32,
@@ -40,7 +43,7 @@ impl Tile {
         let z2: f64 = (2.0f64).powf(zoom as f64);
 
         // Normalize
-        let x = lon / 360. + 0.5;
+        let x = 0.5 + lon / 360.;
         let y = 0.5 - 0.25 * ((1. + latsin) / (1. - latsin)).log(E) / std::f64::consts::PI;
 
         // X Tile
@@ -68,6 +71,36 @@ impl Tile {
         }
     }
 
+    /// Convert zxy to bounding coordinates of tile in epsg:3857
+    pub fn bbox_mercator(&self) -> (f64, f64, f64, f64) {
+        let tile_size = EARTH_CIRCUMFERENCE / (2.0f64).powf(self.zoom as f64);
+
+        let llx = self.x as f64 * tile_size - (EARTH_CIRCUMFERENCE / 2.);
+        let urx = llx + tile_size;
+        let ury = (EARTH_CIRCUMFERENCE / 2.) - self.y as f64 * tile_size;
+        let lly = ury - tile_size;
+
+        (llx, lly, urx, ury)
+    }
+
+    pub fn url_zyx(&self, template: String) -> String {
+        let mut url = template;
+        url = url.replace("{x}", self.x.to_string().as_ref());
+        url = url.replace("{y}", self.y.to_string().as_ref());
+        url = url.replace("{z}", self.zoom.to_string().as_ref());
+        url
+    }
+
+    pub fn url_wms(&self, template: String) -> String {
+        let bbox = self.bbox_mercator();
+        let bbox = format!("{},{},{},{}", bbox.0, bbox.1, bbox.2, bbox.3);
+
+        let mut url = template;
+        url = url.replace("{bbox}", &bbox);
+        url = url.replace("{srs}", "EPSG:3857");
+        url
+    }
+
     /// Get all children of the parent `Tile`.
     /// In reverse order, graudally zooms out
     /// Final element includes the parent tile
@@ -78,10 +111,9 @@ impl Tile {
             zoom: self.zoom,
         };
         let mut tiles = vec![metatile];
+        // Iterate over tiles repeatedly, breaking each tile into four for the next zoom level
+        // TODO might be more efficient with recursion
         for z in self.zoom..target_zoom {
-            // this is a hack algorithm!
-            // TODO eliminate clone and
-            // only iterate over tiles of the previous zoom
             for t in tiles.clone().iter() {
                 if t.zoom == z {
                     tiles.push(Tile {

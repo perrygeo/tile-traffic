@@ -1,12 +1,15 @@
 //! Handle the HTTP requests and emit metrics
 //!
-use crate::{statistics::RequestMetric, strategies::WebMapSession};
 use log::{debug, error};
 use reqwest::StatusCode;
 use std::time::Instant;
 use tokio::sync::mpsc;
 
-/// Wraps the reqwest, gathers and emits stats
+use crate::statistics::RequestMetric;
+use crate::strategies::WebMapSession;
+
+/// Invokes the WebMapSession, performing the request,
+/// gathering and emiting metrics to a channel
 pub async fn request_handler(
     strategy: impl WebMapSession,
     seed: usize,
@@ -41,9 +44,15 @@ pub async fn request_handler(
         )
     } else {
         // failed :-(
-        // TODO inspect the error and make sure that
-        // 502 Bad Gateway is an appropriate status code
-        RequestMetric::new(url, StatusCode::BAD_GATEWAY, 0, duration, None, tile.zoom)
+        error!("{:?}", res);
+        RequestMetric::new(
+            url,
+            StatusCode::from_u16(111).unwrap(),
+            0,
+            duration,
+            None,
+            tile.zoom,
+        )
     };
 
     tx_stats.send(metric).await.unwrap();

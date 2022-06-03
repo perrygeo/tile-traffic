@@ -26,34 +26,35 @@ impl TuiState {
     pub fn draw(&self) {
         let times = &self.response_times;
         let sizes = &self.response_sizes;
-        let bins = 40;
+        let bins = 36;
 
         let h = Histogram::from_slice(times, HistogramBins::Count(bins));
         let v = ContinuousView::new().add(h);
-        let response_time_hist = Page::single(&v).dimensions(82, 9).to_text().unwrap();
+        let response_time_hist = Page::single(&v).dimensions(36, 7).to_text().unwrap();
 
         let h = Histogram::from_slice(sizes, HistogramBins::Count(bins));
         let v = ContinuousView::new().add(h);
-        let response_size_hist = Page::single(&v).dimensions(82, 9).to_text().unwrap();
+        let response_size_hist = Page::single(&v).dimensions(36, 7).to_text().unwrap();
 
         // clear screen and redraw
         print!("{esc}c", esc = 27 as char);
         println!(
             "Running tile-traffic...
 
-                                   Response times (ms)
-{}
-                                   Response sizes (kB)
+              Response times (ms)
 {}
 
-Status Codes
-{:#?}
+              Content Lengths (kB)
+{}
 
-Content Types
-{:#?}
+Count by Status Code
+{:?}
 
-Zoom Levels
-{:#?}
+Count by Content Type
+{:?}
+
+Count by Zoom Level
+{:?}
             ",
             response_time_hist,
             response_size_hist,

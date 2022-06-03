@@ -8,33 +8,39 @@ pub trait WebMapSession {
 
 #[derive(Clone, Debug)]
 pub struct Metatile {
-    template: String,
     metatile: Tile,
     to_zoom: u32,
+    template: String,
+    template_type: Template,
+}
+
+#[derive(Clone, Debug)]
+pub enum Template {
+    Zxy,
+    Wms,
 }
 
 impl Metatile {
-    pub fn new(template: String, metatile: Tile, to_zoom: u32) -> Self {
+    pub fn new(metatile: Tile, to_zoom: u32, template: String, template_type: Template) -> Self {
         Metatile {
-            template,
             metatile,
             to_zoom,
+            template,
+            template_type,
         }
     }
 }
 
 impl WebMapSession for Metatile {
     fn make_url(&self, seed: usize) -> (String, Tile) {
-        // TODO we can cache this
         let children = self.metatile.children(self.to_zoom);
-
         let idx = seed % children.len();
         let tile = &children[idx];
 
-        let mut url = self.template.clone();
-        url = url.replace("{x}", tile.x.to_string().as_ref());
-        url = url.replace("{y}", tile.y.to_string().as_ref());
-        url = url.replace("{z}", tile.zoom.to_string().as_ref());
+        let url = match self.template_type {
+            Template::Zxy => tile.url_zyx(self.template.clone()),
+            Template::Wms => tile.url_wms(self.template.clone()),
+        };
 
         (url, tile.clone())
     }
