@@ -7,10 +7,12 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1"
-clap = { version = "3.1", features = ["color", "derive"]}
+clap = { version = "3.1", features = ["color", "derive"] }
+cli-hist = "0.1.0"
 env_logger = "0.9"
 futures = "0.3"
+har = { version = "0.9" }
 log = "0.4"
-plotlib = "0.5"
-reqwest = { version = "0.11" , features = ["tokio-rustls"] }
-tokio = { version = "1", features = ["rt-multi-thread", "macros"]}
+ratatui = "0.30.2"
+reqwest = { version = "0.11", features = ["tokio-rustls"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

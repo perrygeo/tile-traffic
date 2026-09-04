@@ -3,7 +3,7 @@
 //! ## Tiles
 //!
 //! ```
-//! use webmap_loadgen::coordinates::Tile;
+//! use tile_traffic::coordinates::Tile;
 //!
 //! // ~Denver, Colorado, USA
 //! // see https://a.tile.openstreetmap.org/7/26/48.png
