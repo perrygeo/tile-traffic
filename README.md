@@ -1,27 +1,48 @@
 # Tile Traffic
 
-## WMS
+A TUI for quickly generating HTTP requests of map tiles
+and tracking their response statistics.
 
-`{bbox}` and `{srs}` are required. Your server must be able to handle SRS of `EPSG:3857`.
+## Example
 
-```bash
-cargo run  --release -- \
-    --lon -104.5 --lat 40 --start-zoom 4 --end-zoom 0 \
-    --wms "http://localhost:3080/?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=test1&STYLES=&SRS={srs}&BBOX={bbox}&WIDTH=512&HEIGHT=512&FORMAT=image/png"
+<img src="./screencast.gif">
+
+## Usage
 ```
+$ tile-traffic --help
+tile_traffic 
 
-## ZXY
+USAGE:
+    tile-traffic [OPTIONS] --lat <LAT> --lon <LON>
 
-`{z}`, `{y}` and `{x}` are required
+OPTIONS:
+    -b, --bursts <BURSTS>
+            Number of bursts [default: 16]
 
-```bash
-cargo run  --release -- \
-    --lon -104.9 --lat 39.7 --start-zoom 10 --end-zoom 6 --bursts 32 --sleep-ms 2 \
-    --zxy "http://localhost:7800/osm.points/{z}/{x}/{y}.pbf"
+    -h, --help
+            Print help information
 
-# This should fail! not a valid wms
-cargo run  --release -- \
-    --lon -104.5 --lat 40 --start-zoom 10 --end-zoom 6 \
-    --wms "http://localhost:7800/osm.points/{z}/{x}/{y}.pbf"
+        --header <HEADER>
+            Track the value of an HTTP response header
 
+        --lat <LAT>
+            Latitude
+
+        --lon <LON>
+            Longitude
+
+    -r, --requests-per-burst <REQUESTS_PER_BURST>
+            Number of requests per burst [default: 16]
+
+        --sleep-ms <SLEEP_MS>
+            Sleep for a while between bursts, ms [default: 10]
+
+        --wms <WMS>
+            WMS template
+
+        --zoom <ZOOM>
+            Starting zoom level (most zoomed in) [default: 15]
+
+        --zxy <ZXY>
+            ZXY template
 ```
